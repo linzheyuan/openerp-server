@@ -1832,7 +1832,8 @@ class BaseModel(object):
                     _logger.warning('%r requires a fully-qualified external id (got: %r for model %s). '
                         'Please use the complete `module.view_id` form instead.', view_ref_key, view_ref,
                         self._name)
-            else:
+
+            if not view_id:
                 # otherwise try to find the lowest priority matching ir.ui.view
                 view_id = View.default_view(cr, uid, self._name, view_type, context=context)
 
@@ -5000,32 +5001,6 @@ class BaseModel(object):
     def _register_hook(self, cr):
         """ stuff to do right after the registry is built """
         pass
-
-
-    #def __getattr__(self, name):
-    #    """
-    #    Proxies attribute accesses to the `inherits` parent so we can call methods defined on the inherited parent
-    #    (though inherits doesn't use Python inheritance).
-    #    Handles translating between local ids and remote ids.
-    #    Known issue: doesn't work correctly when using python's own super(), don't involve inherit-based inheritance
-    #                 when you have inherits.
-    #    """
-    #    for model, field in self._inherits.iteritems():
-    #        proxy = self.pool.get(model)
-    #        if hasattr(proxy, name):
-    #            attribute = getattr(proxy, name)
-    #            if not hasattr(attribute, '__call__'):
-    #                return attribute
-    #            break
-    #    else:
-    #        return super(orm, self).__getattr__(name)
-
-    #    def _proxy(cr, uid, ids, *args, **kwargs):
-    #        objects = self.browse(cr, uid, ids, kwargs.get('context', None))
-    #        lst = [obj[field].id for obj in objects if obj[field]]
-    #        return getattr(proxy, name)(cr, uid, lst, *args, **kwargs)
-
-    #    return _proxy
 
     def __getattr__(self, name):
         if name.startswith('signal_'):

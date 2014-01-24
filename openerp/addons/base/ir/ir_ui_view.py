@@ -538,26 +538,6 @@ class view(osv.osv):
                                 'fields': xfields
                             }
                     attrs = {'views': views}
-                    if node.get('widget') and node.get('widget') == 'selection':
-                        # Prepare the cached selection list for the client. This needs to be
-                        # done even when the field is invisible to the current user, because
-                        # other events could need to change its value to any of the selectable ones
-                        # (such as on_change events, refreshes, etc.)
-
-                        # If domain and context are strings, we keep them for client-side, otherwise
-                        # we evaluate them server-side to consider them when generating the list of
-                        # possible values
-                        # TODO: find a way to remove this hack, by allow dynamic domains
-                        dom = []
-                        if column._domain and not isinstance(column._domain, basestring):
-                            dom = list(column._domain)
-                        dom += eval(node.get('domain', '[]'), {'uid': user, 'time': time})
-                        search_context = dict(context)
-                        if column._context and not isinstance(column._context, basestring):
-                            search_context.update(column._context)
-                        attrs['selection'] = relation._name_search(cr, user, '', dom, context=search_context, limit=None, name_get_uid=1)
-                        if (node.get('required') and not int(node.get('required'))) or not column.required:
-                            attrs['selection'].append((False, ''))
                 fields[node.get('name')] = attrs
 
                 field = model_fields.get(node.get('name'))
@@ -802,14 +782,27 @@ class view(osv.osv):
                 self.translate_qweb(cr, uid, id_, node, lang, context)
         return arch
 
-    def render(self, cr, uid, xml_id, values=None, engine='ir.qweb', context=None):
+    @openerp.tools.ormcache()
+    def get_view_xmlid(self, cr, uid, id):
+        imd = self.pool['ir.model.data']
+        domain = [('model', '=', 'ir.ui.view'), ('res_id', '=', id)]
+        xmlid = imd.search_read(cr, uid, domain, ['module', 'name'])[0]
+        return '%s.%s' % (xmlid['module'], xmlid['name'])
+
+    def render(self, cr, uid, id_or_xml_id, values=None, engine='ir.qweb', context=None):
+        if isinstance(id_or_xml_id, list):
+            id_or_xml_id = id_or_xml_id[0]
+        tname = id_or_xml_id
+        if isinstance(tname, (int, long)):
+            tname = self.get_view_xmlid(cr, uid, tname)
+
         if not context:
             context = {}
 
         def loader(name):
             return self.read_template(cr, uid, name, context=context)
 
-        return self.pool[engine].render(cr, uid, xml_id, values, loader=loader, context=context)
+        return self.pool[engine].render(cr, uid, tname, values, loader=loader, context=context)
 
     #------------------------------------------------------
     # Misc
