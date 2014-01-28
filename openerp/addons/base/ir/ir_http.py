@@ -41,9 +41,6 @@ class ModelsConverter(werkzeug.routing.BaseConverter):
         self.regex = '([0-9,]+)'
 
     def to_python(self, value):
-        # TODO:
-        # - raise routing.ValidationError() if no browse record can be createdm
-        # - support slug
         return request.registry[self.model].browse(request.cr, UID_PLACEHOLDER, [int(i) for i in value.split(',')], context=request.context)
 
     def to_url(self, value):
@@ -86,6 +83,7 @@ class ir_http(osv.AbstractModel):
         return auth_method
 
     def _handle_exception(self, exception):
+        # If handle exception return something different than None, it will be used as a response
         raise
 
     def _dispatch(self):
@@ -104,14 +102,10 @@ class ir_http(osv.AbstractModel):
                 convert_exception_to(
                     werkzeug.exceptions.Forbidden))
 
-        # post process arg to set uid on browse records
-        for arg in arguments.itervalues():
-            if isinstance(arg, orm.browse_record) and arg._uid is UID_PLACEHOLDER:
-                arg._uid = request.uid
-                try:
-                    arg[arg._rec_name]
-                except KeyError:
-                    return self._handle_exception(werkzeug.exceptions.NotFound())
+        processing = self._postprocess_args(arguments)
+        if processing:
+            return processing
+
 
         # set and execute handler
         try:
@@ -123,6 +117,16 @@ class ir_http(osv.AbstractModel):
             return self._handle_exception(e)
 
         return result
+
+    def _postprocess_args(self, arguments):
+        """ post process arg to set uid on browse records """
+        for arg in arguments.itervalues():
+            if isinstance(arg, orm.browse_record) and arg._uid is UID_PLACEHOLDER:
+                arg._uid = request.uid
+                try:
+                    arg[arg._rec_name]
+                except KeyError:
+                    return self._handle_exception(werkzeug.exceptions.NotFound())
 
     def routing_map(self):
         if not hasattr(self, '_routing_map'):
