@@ -181,7 +181,7 @@ class WebRequest(object):
 
         if self._cr:
             # Dont commit test cursors
-            if not openerp.tests.common.release_test_cursor(self.session_id):
+            if not openerp.tests.common.release_test_cursor(self._cr):
                 if exc_type is None:
                     self._cr.commit()
                 self._cr.close()
@@ -1208,11 +1208,6 @@ class CommonController(Controller):
     def jsonrpc(self, service, method, args):
         """ Method used by client APIs to contact OpenERP. """
         return openerp.netsvc.dispatch_rpc(service, method, args)
-
-    @route('/gen_session_id', type='json', auth="none")
-    def gen_session_id(self):
-        nsession = root.session_store.new()
-        return nsession.sid
 
 root = None
 
