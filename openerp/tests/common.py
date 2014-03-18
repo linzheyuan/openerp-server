@@ -15,8 +15,9 @@ import time
 import unittest2
 import urllib2
 import xmlrpclib
-
 from datetime import datetime, timedelta
+
+import werkzeug
 
 import openerp
 
